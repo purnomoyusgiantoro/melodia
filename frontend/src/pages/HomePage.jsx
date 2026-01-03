@@ -1,14 +1,14 @@
 import React from 'react';
 import { Music, Coins, TrendingUp, Shield, Users, Zap } from 'lucide-react';
 
-export default function HomePage() {
+export default function HomePage({account, onConnect}) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white">
       {/* Navigation */}
       <nav className="fixed top-0 w-full bg-black/30 backdrop-blur-md z-50 border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">   
               <Music className="w-8 h-8 text-purple-400" />
               <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Melodia
@@ -20,8 +20,13 @@ export default function HomePage() {
               <a href="#explore" className="hover:text-purple-400 transition">Explore</a>
               <a href="#about" className="hover:text-purple-400 transition">About</a>
             </div>
-            <button className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full font-semibold hover:scale-105 transition">
-              Connect Wallet
+            <button
+              onClick={onConnect}
+              className="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+            >
+              {account
+                ? account.slice(0, 6) + "..." + account.slice(-4)
+                : "Connect Wallet"}
             </button>
           </div>
         </div>
