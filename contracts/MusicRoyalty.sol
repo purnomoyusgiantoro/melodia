@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity ^0.8.30;
 
 contract MusicRoyalty {
 
@@ -159,6 +159,18 @@ contract MusicRoyalty {
 
     function setLegalDocument(string calldata _ipfsHash) external onlyAdmin {
         music.legalDocument = _ipfsHash;
+    }
+
+    /// ========================
+    /// Example: refund Ether safely
+    /// ========================
+    function refundExcess(uint256 totalCost) external payable {
+        require(msg.value >= totalCost, "Insufficient ETH sent");
+        uint256 refund = msg.value - totalCost;
+        if(refund > 0) {
+            (bool success, ) = msg.sender.call{value: refund}("");
+            require(success, "Refund failed");
+        }
     }
 
     function _isVerified(address _account) internal view returns (bool) {
