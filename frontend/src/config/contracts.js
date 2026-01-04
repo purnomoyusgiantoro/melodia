@@ -4,7 +4,7 @@ import KYCRegistryABI from "../abi/KYCRegistry.json";
 
 export const CONTRACTS = {
   musicRoyalty: {
-    address: "0x371A8890d7DBb90Ad9024e289FfE1e670F285024",
+    address: "0x8DebFA31686012B1aa2ea78B7fFd58d977c96a20",
     abi: MusicRoyaltyABI,
   },
   musicIPNFT: {

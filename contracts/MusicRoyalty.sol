@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.20;
+pragma solidity ^0.8.30;
 
 contract MusicRoyalty {
 
@@ -28,12 +28,24 @@ contract MusicRoyalty {
 
     uint256 public maxHolding = 1000 ether;
 
+    // =========================
+    // NEW: Price per share for demo
+    // =========================
+    uint256 public pricePerShare = 0.01 ether;
+
+    // =========================
+    // EVENTS
+    // =========================
     event Transfer(address indexed from, address indexed to, uint256 value);
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event AccountFrozen(address indexed account, string reason);
     event AccountUnfrozen(address indexed account);
     event MusicUpdated(string title, uint256 totalRoyaltyValue);
+    event SharesPurchased(address indexed buyer, uint256 amount, uint256 totalCost);
 
+    // =========================
+    // MODIFIERS
+    // =========================
     modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin");
         _;
@@ -46,6 +58,11 @@ contract MusicRoyalty {
 
     modifier onlyVerified(address _account) {
         require(_isVerified(_account), "Not KYC verified");
+        _;
+    }
+
+    // For demo: allow everyone to buy
+    modifier onlyVerifiedOrDemo(address _account) {
         _;
     }
 
@@ -80,6 +97,9 @@ contract MusicRoyalty {
         emit Transfer(address(0), msg.sender, _totalShares);
     }
 
+    // =========================
+    // STANDARD FUNCTIONS
+    // =========================
     function balanceOf(address _owner) public view returns (uint256) {
         return balances[_owner];
     }
@@ -161,6 +181,34 @@ contract MusicRoyalty {
         music.legalDocument = _ipfsHash;
     }
 
+    // =========================
+    // NEW: Buy Shares Function
+    // =========================
+    function buyShares(uint256 _amount) external payable notFrozen(msg.sender) onlyVerifiedOrDemo(msg.sender) {
+        require(_amount > 0, "Amount must be > 0");
+        uint256 totalCost = _amount * pricePerShare;
+        require(msg.value >= totalCost, "Insufficient ETH sent");
+        require(balances[admin] >= _amount, "Not enough shares available");
+
+        balances[admin] -= _amount;
+        balances[msg.sender] += _amount;
+
+        emit Transfer(admin, msg.sender, _amount);
+        emit SharesPurchased(msg.sender, _amount, totalCost);
+
+        // Refund kelebihan ETH
+        if (msg.value > totalCost) {
+            payable(msg.sender).transfer(msg.value - totalCost);
+        }
+    }
+
+    function setPricePerShare(uint256 _price) external onlyAdmin {
+        pricePerShare = _price;
+    }
+
+    // =========================
+    // INTERNAL
+    // =========================
     function _isVerified(address _account) internal view returns (bool) {
         if (_account == admin) return true;
 

@@ -393,6 +393,19 @@
 	{
 		"inputs": [
 			{
+				"internalType": "uint256",
+				"name": "totalCost",
+				"type": "uint256"
+			}
+		],
+		"name": "refundExcess",
+		"outputs": [],
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"inputs": [
+			{
 				"internalType": "string",
 				"name": "_ipfsHash",
 				"type": "string"
