@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import { ethers } from "ethers";
 import { CONTRACTS } from "../config/contracts";
 
 export default function SongDetail() {
+  const { id } = useParams(); // tokenId dari URL
+
   const [account, setAccount] = useState(null);
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
 
   const [song, setSong] = useState(null);
-  const [pricePerShare, setPricePerShare] = useState("0");
-  const [availableShares, setAvailableShares] = useState(0);
-  const [buyAmount, setBuyAmount] = useState(1);
+  const [royaltyContract, setRoyaltyContract] = useState(null);
+  const [userBalance, setUserBalance] = useState("0");
+  const [totalSupply, setTotalSupply] = useState("0");
   const [loading, setLoading] = useState(false);
 
   /* =============================
@@ -23,6 +26,7 @@ export default function SongDetail() {
     }
 
     const prov = new ethers.BrowserProvider(window.ethereum);
+    await prov.send("eth_requestAccounts", []);
     const sign = await prov.getSigner();
     const addr = await sign.getAddress();
 
@@ -32,69 +36,70 @@ export default function SongDetail() {
   }
 
   /* =============================
-     LOAD SONG FROM CONTRACT
-     (contoh: tokenId = 1)
+     LOAD SONG (MusicIPNFT)
   ============================== */
   async function loadSong() {
-    if (!provider) return;
+    if (!provider || !id) return;
 
+    const ipNFT = new ethers.Contract(
+      CONTRACTS.musicIPNFT.address,
+      CONTRACTS.musicIPNFT.abi,
+      provider
+    );
+
+    const data = await ipNFT.getMusicIP(id);
+
+    // metadata dari IPFS
+    const metaRes = await fetch(
+      data.metadataURI.replace("ipfs://", "https://ipfs.io/ipfs/")
+    );
+    const meta = await metaRes.json();
+
+    setSong({
+      tokenId: id,
+      title: data.title,
+      artist: data.artist,
+      description: meta.description,
+      cover: meta.image.replace("ipfs://", "https://ipfs.io/ipfs/"),
+    });
+
+    // hubungkan ke royalty contract
     const royalty = new ethers.Contract(
-      CONTRACTS.musicRoyalty.address,
+      data.royaltyContract,
       CONTRACTS.musicRoyalty.abi,
       provider
     );
 
-    const tokenId = 1;
+    setRoyaltyContract(royalty);
 
-    // 🔽 SESUAIKAN DENGAN CONTRACT KAMU
-    const price = await royalty.pricePerShare(tokenId);
-    const available = await royalty.availableShares(tokenId);
-    const metadataURI = await royalty.tokenURI(tokenId);
+    const supply = await royalty.totalSupply();
+    setTotalSupply(ethers.formatEther(supply));
 
-    setPricePerShare(ethers.formatEther(price));
-    setAvailableShares(Number(available));
-
-    // Ambil metadata dari IPFS
-    const res = await fetch(metadataURI.replace("ipfs://", "https://ipfs.io/ipfs/"));
-    const meta = await res.json();
-
-    setSong({
-      tokenId,
-      title: meta.name,
-      artist: meta.artist,
-      cover: meta.image.replace("ipfs://", "https://ipfs.io/ipfs/"),
-      description: meta.description,
-    });
+    if (account) {
+      const bal = await royalty.balanceOf(account);
+      setUserBalance(ethers.formatEther(bal));
+    }
   }
 
   /* =============================
-     BUY SHARES
+     BUY ROYALTY (TRANSFER)
   ============================== */
-  async function buyShares() {
-    if (!signer) {
-      alert("Connect wallet dulu");
-      return;
-    }
+  async function buyRoyalty(to, amount) {
+    if (!signer || !royaltyContract) return;
 
     try {
       setLoading(true);
 
-      const royalty = new ethers.Contract(
-        CONTRACTS.musicRoyalty.address,
-        CONTRACTS.musicRoyalty.abi,
-        signer
-      );
+      const royaltyWithSigner = royaltyContract.connect(signer);
 
-      const totalCost = ethers.parseEther(
-        (Number(pricePerShare) * buyAmount).toString()
+      const tx = await royaltyWithSigner.transfer(
+        to,
+        ethers.parseEther(amount)
       );
-
-      const tx = await royalty.buyShares(song.tokenId, buyAmount, {
-        value: totalCost,
-      });
 
       await tx.wait();
-      alert("Berhasil membeli shares 🎉");
+      alert("Royalty berhasil dibeli 🎉");
+
       loadSong();
     } catch (err) {
       console.error(err);
@@ -112,61 +117,54 @@ export default function SongDetail() {
   }, []);
 
   useEffect(() => {
-    loadSong();
-  }, [provider]);
+    if (provider) loadSong();
+  }, [provider, account]);
 
   /* =============================
      UI
   ============================== */
   if (!song) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white">
+      <div className="min-h-screen flex items-center justify-center text-white bg-black">
         Loading song from blockchain...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white p-10">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white p-10">
       <button
         onClick={connectWallet}
         className="mb-6 px-4 py-2 bg-purple-600 rounded"
       >
-        {account ? `${account.slice(0, 6)}...${account.slice(-4)}` : "Connect Wallet"}
+        {account
+          ? `${account.slice(0, 6)}...${account.slice(-4)}`
+          : "Connect Wallet"}
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <img src={song.cover} className="rounded-xl" />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+        <img src={song.cover} alt={song.title} className="rounded-xl" />
 
         <div>
           <h1 className="text-4xl font-bold">{song.title}</h1>
-          <p className="text-gray-400 mb-4">{song.artist}</p>
+          <p className="text-gray-300 mb-4">{song.artist}</p>
 
-          <p className="mb-4">{song.description}</p>
+          <p className="mb-6">{song.description}</p>
 
           <div className="mb-2">
-            💰 Price / Share: <b>{pricePerShare} ETH</b>
+            🎵 Total Royalty Supply: <b>{totalSupply}</b>
           </div>
 
-          <div className="mb-4">
-            📦 Available Shares: <b>{availableShares}</b>
+          <div className="mb-6">
+            💼 Your Balance: <b>{userBalance}</b>
           </div>
-
-          <input
-            type="number"
-            min="1"
-            max={availableShares}
-            value={buyAmount}
-            onChange={(e) => setBuyAmount(Number(e.target.value))}
-            className="text-black px-2 py-1 rounded mb-4"
-          />
 
           <button
-            onClick={buyShares}
+            onClick={() => buyRoyalty(account, "10")}
             disabled={loading}
-            className="block px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded text-lg"
+            className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded text-lg"
           >
-            {loading ? "Processing..." : "Buy Shares"}
+            {loading ? "Processing..." : "Buy 10 Royalty Tokens"}
           </button>
         </div>
       </div>

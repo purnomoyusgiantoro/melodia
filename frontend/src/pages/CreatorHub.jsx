@@ -1,292 +1,155 @@
-import React, { useState } from "react";
-import {
-  Music,
-  Upload,
-  FileAudio,
-  DollarSign,
-  ArrowLeft,
-  Check
-} from "lucide-react";
+import { useState } from "react";
+import { ethers } from "ethers";
+import { useNavigate } from "react-router-dom";
+import MusicRoyaltyABI from "../abi/MusicRoyalty.json";
+
+const KYC_REGISTRY_ADDRESS = "0xfeDaf49154eCc07b315B527C194950c8e6F0b3B3";
 
 export default function CreatorHub() {
-  const [step, setStep] = useState(1);
+  const navigate = useNavigate();
 
-  const [songData, setSongData] = useState({
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    tokenName: "",
+    tokenSymbol: "",
     title: "",
     artist: "",
-    genre: "",
-    audioFile: null,
-    coverImage: null,
+    totalRoyaltyValue: "",
     totalShares: "",
-    pricePerShare: "",
-    royaltyPercentage: "",
-    releaseDate: ""
+    legalDocument: "",
   });
 
-  /* =======================
-     HANDLERS
-  ======================== */
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setSongData((prev) => ({
-      ...prev,
-      [name]: value
-    }));
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e, type) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSongData((prev) => ({
-      ...prev,
-      [type]: file
-    }));
+  // MOCK IPFS (sementara)
+  const uploadToIPFS = async (text) => {
+    return "ipfs://LEGAL_DOC_HASH_EXAMPLE";
   };
 
-  const handleSubmit = async (e) => {
+  const handleDeploy = async (e) => {
     e.preventDefault();
 
-    console.log("Song data:", songData);
+    if (!window.ethereum) {
+      alert("MetaMask tidak ditemukan");
+      return;
+    }
 
-    // ⛓️ NANTINYA DI SINI:
-    // - Upload audio & image ke IPFS
-    // - Panggil smart contract (mint / deploy royalty)
-    alert("Smart contract call placeholder");
+    try {
+      setLoading(true);
+
+      // 1️⃣ Upload legal doc
+      const legalDocURI = await uploadToIPFS(form.legalDocument);
+
+      // 2️⃣ Connect wallet
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      // 3️⃣ Factory
+      const factory = new ethers.ContractFactory(
+        MusicRoyaltyABI.abi,
+        MusicRoyaltyABI.bytecode,
+        signer
+      );
+
+      // 4️⃣ Deploy contract (INI YANG MEMUNCULKAN METAMASK)
+      const contract = await factory.deploy(
+        form.tokenName,
+        form.tokenSymbol,
+        KYC_REGISTRY_ADDRESS,
+        form.title,
+        form.artist,
+        ethers.parseEther(form.totalRoyaltyValue),
+        ethers.parseEther(form.totalShares)
+      );
+
+      await contract.waitForDeployment();
+
+      // 5️⃣ Set legal document
+      await contract.setLegalDocument(legalDocURI);
+
+      alert(`🎉 Lagu berhasil dibuat!\nContract: ${contract.target}`);
+
+      navigate("/portfolio");
+    } catch (err) {
+      console.error(err);
+      alert("Gagal deploy contract");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  /* =======================
-     UI
-  ======================== */
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 text-white">
-      {/* NAVBAR */}
-      <nav className="bg-black/30 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Music className="w-8 h-8 text-purple-400" />
-            <span className="text-2xl font-bold">Melodia</span>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-black text-white px-6 py-16">
+      <div className="max-w-3xl mx-auto bg-white/10 backdrop-blur-xl rounded-2xl p-8 shadow-2xl">
+        <h1 className="text-3xl font-bold mb-6 text-center">
+          🎵 Creator Hub
+        </h1>
 
-          <button className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 rounded-lg border border-purple-400/30">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            <span className="text-sm">Wallet Connected</span>
+        <form onSubmit={handleDeploy} className="space-y-4">
+          <input
+            name="tokenName"
+            placeholder="Token Name (ex: Melodia Royalty)"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="tokenSymbol"
+            placeholder="Token Symbol (ex: MLD)"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="title"
+            placeholder="Judul Lagu"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="artist"
+            placeholder="Nama Artist"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="totalRoyaltyValue"
+            placeholder="Total Royalty (ETH)"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            name="totalShares"
+            placeholder="Total Shares (contoh: 1000)"
+            className="input"
+            onChange={handleChange}
+            required
+          />
+
+          <textarea
+            name="legalDocument"
+            placeholder="Legal Document / IP Info"
+            className="input h-28"
+            onChange={handleChange}
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-purple-600 font-semibold hover:opacity-90 transition"
+          >
+            {loading ? "Deploying..." : "🚀 Deploy Music Contract"}
           </button>
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        {/* HEADER */}
-        <button className="flex items-center gap-2 text-gray-300 hover:text-white mb-6">
-          <ArrowLeft className="w-4 h-4" />
-          Back to Home
-        </button>
-
-        <h1 className="text-4xl font-bold mb-2">Creator Hub</h1>
-        <p className="text-gray-300 mb-10">
-          Tokenize your music & deploy royalty smart contracts
-        </p>
-
-        {/* STEPS */}
-        <div className="flex justify-center items-center gap-4 mb-12">
-          {[1, 2, 3].map((n) => (
-            <React.Fragment key={n}>
-              <div
-                className={`w-12 h-12 rounded-full flex items-center justify-center font-bold ${
-                  step >= n
-                    ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                    : "bg-white/10"
-                }`}
-              >
-                {step > n ? <Check /> : n}
-              </div>
-              {n < 3 && (
-                <div
-                  className={`w-24 h-1 ${
-                    step > n
-                      ? "bg-gradient-to-r from-purple-500 to-pink-500"
-                      : "bg-white/10"
-                  }`}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {/* FORM */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-white/5 border border-white/10 rounded-2xl p-8"
-        >
-          {/* STEP 1 */}
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <FileAudio className="text-purple-400" />
-                Song Information
-              </h2>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <input
-                  name="title"
-                  placeholder="Song Title"
-                  value={songData.title}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                />
-
-                <input
-                  name="artist"
-                  placeholder="Artist Name"
-                  value={songData.artist}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                />
-
-                <select
-                  name="genre"
-                  value={songData.genre}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                >
-                  <option value="">Select Genre</option>
-                  <option>Pop</option>
-                  <option>Rock</option>
-                  <option>Hip Hop</option>
-                  <option>Electronic</option>
-                  <option>Jazz</option>
-                </select>
-
-                <input
-                  type="date"
-                  name="releaseDate"
-                  value={songData.releaseDate}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                />
-              </div>
-
-              {/* AUDIO */}
-              <label className="upload-box">
-                <Upload />
-                <span>
-                  {songData.audioFile
-                    ? songData.audioFile.name
-                    : "Upload Audio File"}
-                </span>
-                <input
-                  type="file"
-                  accept="audio/*"
-                  hidden
-                  onChange={(e) => handleFileChange(e, "audioFile")}
-                />
-              </label>
-
-              {/* COVER */}
-              <label className="upload-box">
-                <Upload />
-                <span>
-                  {songData.coverImage
-                    ? songData.coverImage.name
-                    : "Upload Cover Image"}
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  hidden
-                  onChange={(e) => handleFileChange(e, "coverImage")}
-                />
-              </label>
-            </div>
-          )}
-
-          {/* STEP 2 */}
-          {step === 2 && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold flex items-center gap-2">
-                <DollarSign className="text-purple-400" />
-                Tokenomics
-              </h2>
-
-              <div className="grid md:grid-cols-2 gap-6">
-                <input
-                  type="number"
-                  name="totalShares"
-                  placeholder="Total Shares"
-                  value={songData.totalShares}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                />
-
-                <input
-                  type="number"
-                  name="pricePerShare"
-                  placeholder="Price per Share (ETH)"
-                  value={songData.pricePerShare}
-                  onChange={handleInputChange}
-                  required
-                  className="input"
-                />
-
-                <input
-                  type="number"
-                  name="royaltyPercentage"
-                  placeholder="Royalty %"
-                  value={songData.royaltyPercentage}
-                  onChange={handleInputChange}
-                  required
-                  className="input md:col-span-2"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* STEP 3 */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Review & Deploy</h2>
-              <pre className="bg-black/30 p-4 rounded text-sm overflow-auto">
-                {JSON.stringify(songData, null, 2)}
-              </pre>
-            </div>
-          )}
-
-          {/* NAV */}
-          <div className="flex justify-between mt-10">
-            {step > 1 && (
-              <button
-                type="button"
-                onClick={() => setStep(step - 1)}
-                className="px-6 py-3 bg-white/10 rounded-lg"
-              >
-                Previous
-              </button>
-            )}
-
-            {step < 3 ? (
-              <button
-                type="button"
-                onClick={() => setStep(step + 1)}
-                className="ml-auto px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg font-semibold"
-              >
-                Continue
-              </button>
-            ) : (
-              <button
-                type="submit"
-                className="ml-auto px-8 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg font-semibold"
-              >
-                Deploy Smart Contract
-              </button>
-            )}
-          </div>
         </form>
       </div>
     </div>
