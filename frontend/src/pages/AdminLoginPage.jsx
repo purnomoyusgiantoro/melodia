@@ -148,31 +148,6 @@ export default function AdminLoginPage() {
                         Switch to Localhost
                     </button>
                 </div>
-
-                {/* DEV HELP SECTION */}
-                <div className="mt-8 pt-6 border-t border-gray-800">
-                    <p className="text-xs text-gray-500 mb-2 font-bold uppercase tracking-wider">Development Tools</p>
-                    <div className="bg-black/40 p-3 rounded text-xs text-left">
-                        <p className="text-gray-400 mb-1">Missing the Admin Account?</p>
-                        <div className="flex items-center gap-2 bg-black border border-gray-700 p-2 rounded">
-                            <code className="text-gray-300 truncate flex-1">
-                                0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-                            </code>
-                            <button 
-                                onClick={() => {
-                                    navigator.clipboard.writeText("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-                                    toast.success("Private Key Copied!");
-                                }}
-                                className="bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded text-white"
-                            >
-                                Copy
-                            </button>
-                        </div>
-                        <p className="text-gray-500 mt-2">
-                            MetaMask ➝ Accounts ➝ Import Account ➝ Paste this Key.
-                        </p>
-                    </div>
-                </div>
             </div>
         </div>
     );
