@@ -8,15 +8,15 @@ const KYCRegistryABI = KYCRegistryArtifact.abi;
 
 export const CONTRACTS = {
   musicRoyalty: {
-    address: "0x8DebFA31686012B1aa2ea78B7fFd58d977c96a20",
+    address: "0xC9353F7dfc74B532C8073070FbdA5487fB9c90CD",
     abi: MusicRoyaltyABI,
   },
   musicIPNFT: {
-    address: "0x57cFb035C6DFCB71f01AE6EA24196328E8b352f6",
+    address: "0xd6d380B69201089BfDE262A7f65273C2C49288ab",
     abi: MusicIPNFTABI,
   },
   kycRegistry: {
-    address: "0x381D28F516f3951203A29E3B636e00B6e79AC220",
+    address: "0x68d4243A8bb967D0Fc355d76770ae2d03570d250",
     abi: KYCRegistryABI,
   },
 };
